@@ -5,9 +5,9 @@ async function create(req, res) {
     const { username, email, fullname, bio } = req.body;
 
     if (!username || !email || !fullname) {
-      return res
-        .status(400)
-        .json({ error: "username, email and fullname are required" });
+      return res.status(400).json({
+        error: "username, email and fullname are required",
+      });
     }
 
     const user = await usersService.createUser({
@@ -20,16 +20,20 @@ async function create(req, res) {
     res.status(201).json(user);
   } catch (error) {
     if (error.code === "P2002") {
-      return res
-        .status(409)
-        .json({ error: "username or email already taken" });
+      return res.status(409).json({
+        error: "username or email already taken",
+      });
     }
 
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 }
+
 async function list(req, res) {
   try {
+    // Pagination
     const page = req.query.page === undefined ? 1 : Number(req.query.page);
     let limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
 
@@ -44,8 +48,10 @@ async function list(req, res) {
       });
     }
 
+    // Maximum allowed limit is 50
     limit = Math.min(limit, 50);
 
+    // Sorting
     const sortBy = req.query.sortBy || "createdAt";
     const order = req.query.order || "desc";
 
@@ -63,11 +69,32 @@ async function list(req, res) {
       });
     }
 
+    // isPrivate filter
+    let isPrivate;
+
+    if (req.query.isPrivate !== undefined) {
+      if (
+        req.query.isPrivate !== "true" &&
+        req.query.isPrivate !== "false"
+      ) {
+        return res.status(400).json({
+          error: "isPrivate must be true or false",
+        });
+      }
+
+      isPrivate = req.query.isPrivate === "true";
+    }
+
+    // Search filter
+    const search = req.query.search;
+
     const { data, total } = await usersService.listUsers(
       page,
       limit,
       sortBy,
-      order
+      order,
+      isPrivate,
+      search
     );
 
     res.status(200).json({
@@ -81,7 +108,10 @@ async function list(req, res) {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 }
 
@@ -92,12 +122,16 @@ async function getOne(req, res) {
     const user = await usersService.getUserById(id);
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({
+        error: "User not found",
+      });
     }
 
     res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 }
 
@@ -124,10 +158,14 @@ async function update(req, res) {
     res.status(200).json(user);
   } catch (error) {
     if (error.code === "P2025") {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({
+        error: "User not found",
+      });
     }
 
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 }
 
@@ -140,10 +178,14 @@ async function remove(req, res) {
     res.status(204).send();
   } catch (error) {
     if (error.code === "P2025") {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({
+        error: "User not found",
+      });
     }
 
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 }
 

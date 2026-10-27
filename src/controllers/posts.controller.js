@@ -24,14 +24,93 @@ async function create(req, res) {
 
 async function list(req, res) {
   try {
-    const posts = await postsService.listPosts();
+    const page = req.query.page === undefined ? 1 : Number(req.query.page);
+    let limit = req.query.limit === undefined ? 10 : Number(req.query.limit);
 
-    res.status(200).json(posts);
+    if (
+      !Number.isInteger(page) ||
+      page <= 0 ||
+      !Number.isInteger(limit) ||
+      limit <= 0
+    ) {
+      return res.status(400).json({
+        error: "page and limit must be positive integers",
+      });
+    }
+
+    limit = Math.min(limit, 50);
+
+    const sortBy = req.query.sortBy || "createdAt";
+    const order = req.query.order || "desc";
+
+    const allowedSortFields = ["createdAt", "updatedAt"];
+
+    if (!allowedSortFields.includes(sortBy)) {
+      return res.status(400).json({
+        error: "sortBy must be one of: createdAt, updatedAt",
+      });
+    }
+
+    if (order !== "asc" && order !== "desc") {
+      return res.status(400).json({
+        error: "order must be asc or desc",
+      });
+    }
+
+    const location = req.query.location;
+    const search = req.query.search;
+
+    let from;
+    let to;
+
+    if (req.query.from !== undefined) {
+      from = new Date(req.query.from);
+
+      if (Number.isNaN(from.getTime())) {
+        return res.status(400).json({
+          error: "from and to must be valid dates",
+        });
+      }
+    }
+
+    if (req.query.to !== undefined) {
+      to = new Date(req.query.to);
+
+      if (Number.isNaN(to.getTime())) {
+        return res.status(400).json({
+          error: "from and to must be valid dates",
+        });
+      }
+    }
+
+    const { data, total } = await postsService.listPosts(
+      page,
+      limit,
+      sortBy,
+      order,
+      location,
+      search,
+      from,
+      to
+    );
+
+    res.status(200).json({
+      data,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
+    console.error(error);
+
+    res.status(500).json({
+      error: "Internal server error",
+    });
   }
 }
-
 async function getOne(req, res) {
   try {
     const id = Number(req.params.id);
